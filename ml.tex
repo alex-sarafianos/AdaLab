@@ -1,0 +1,212 @@
+
+\documentclass{article}
+
+\begin{document}
+
+\newcommand{\probmodelspace}{\mathcal{P}_\mathcal{M}}
+\newcommand{\modelspace}{\mathcal{M}}
+\newcommand{\expspace}{\mathcal{E}}
+
+\author{Jan Ramon}
+\title{An ML sketch based on the 22/1/2016 discussion}
+\date{24/1/2016}
+\maketitle
+
+\section{Model and experiment space declarations}
+
+Declarations should be constructed for the \textit{model space} and \textit{experiment space}.  These specifications may be refined during the project, it is essential to have a repository which always has the most recent specifications suppoirted by all modules (and possibly experimental versions not yet supported by all modules).
+
+This document will represent specifications in logic (prolog facts),
+there are some specific formalisms around, e.g., for gene regulatory networks,
+but they are not always compatible with each other nor sufficiently general to
+incorporate everything we want to model.
+Nevertheless, during implementation more suitable representations could be developed.
+
+\subsection{Experiment space}
+
+An environemt state is a data structure representing the state of the environment at a certain time point.  This includes amongst others the concentration of compounds (sugar, alcohol, ...) and temperature (see technical documents).  
+
+The specification of an experiment is a tuple $expSpec(InitEnv,IncEnv,Strain,Output)$ where
+\begin{enumerate}
+\item $InitEnv$ is the initial environment state
+\item $IncEnv$ is a function which gives for each time point $t$ the external changes to the environment, such as addition of compounds (sugar, alcohol, ...) and increase/decrease of temperature.
+\item $Strain$ is the strain used (e.g., knocked out genes)
+\item $Output$ is a list of measurements made during the experiment, e.g., a point on the growth curve every 20 minutes, the amount of sugar at the end.
+\end{enumerate}
+
+The experiment space declaration is a set of statements defining this data structure in more detail, e.g.
+
+\begin{verbatim}
+experiment_specification(exampleExpSpec).
+expSpec_initEnv(exampleExpSpec, Feature, ValueRange) :-
+   envStateSpec(exampleEnvStateSpec, Feature, ValueRange).
+expSpec_incEnv(exampleExpSpec, addComp(Compound, Amount)) :- 
+   member(Compound, [sugar,alcohol]), 
+   member(Amount,[1,2,3,4]). % in vol%
+expSpec_incEnv(exampleExpSpec, deltaTemp(DT)) :-
+   member(DT,[-1,1]). % in degrees Celsius
+expSpec_envState(exampleExpSpec, exampleEnvStateSpec).
+expSpec_output(exampleExpSpec, Time, yeastGrowth(Time)) :- 
+   Time = 20 
+   ; expSpec_output(exampleExpSpec, PrevTime, yeastGrowth(PrevTime)),
+     Time is PrevTime + 20. % in minutes
+expSpec_strain(exampleExpSpec, exampleStrainSpec).
+
+envStateSpec(exampleEnvStateSpec, temp, real(0,40)).
+envStateSpec(exampleEnvSTateSpec, sugarConc, real(0,1)).
+
+strainSpec(exampleStrainSpec, knockOut(Gene), bool) :-
+   member(Gene, [gene1, gene2]).
+strainSpec(exampleStrainSpec, greyScale(Gene), real(0,1,Resolution)) :-
+   member(Gene, [gene3, gene4]), Resolution=0.1.
+\end{verbatim}
+
+{\small{For those not familiar with prolog, it is easy from the above the ``ground'' these specifications, i.e. writing them as instantiated facts.  Those liking lifted inference can keep the implicit clauses.}}
+
+We will denote experiment spaces with $\expspace$.
+
+\subsection{Model space}
+
+The state of an experiment is a triple $S=state(Strain, YeastState, EnvState)$ (1) strain information, (2) the state of the yeast (gene expression levels, metabolite concentrations, ...) and (3) the environment (temperature, concentration of compounds, ...)
+
+The model describes how the state of an experiment evolves over time.
+An experiment $Exp$ starts at time $0$.
+If the specification of the experiment $Exp$ is $expSpec(InitEnv,IncEnv,Strain,Output)$, then $state(Exp,0)$
+
+The model space declaration defines the parameters of the model.  For example:
+
+\begin{verbatim}
+modelSpec(exampleModelSpec).
+modelSpec_strain(exampleModelSpec, exampleStrainSpec). 
+modelSpec_parameter(exampleModelSpec, geneRegulateEdge(G1,G2), real(-1,1,0.1)) :-
+   % +1 is upregulation, -1 is inhibition
+   exampleModelGene(G1), exampleModelGene(G2).
+modelSpec_parameter(exampleModelSpec, geneTempRegulate(G1), real(-1,1,0.1)) :-
+   % for genes influenced by the temperature:
+   % strength of regulation is the (temperature minus 20Celsius)
+   % times the value of this parameter.
+   exampleModelGene(G1).
+
+exampleModelGene(gene1).
+exampleModelGene(gene2).
+exampleModelGene(gene3).
+exampleModelGene(gene4).
+\end{verbatim}
+
+We will denote model spaces with $\modelspace$.
+
+\subsection{Cost and objective functions}
+
+We laos have declarations of the cost of experiments, e.g.,
+
+\begin{verbatim}
+expCost(exampleExpSpec,newknockoutStrain, 100).
+expCost(exampleExpSpec,newGreyScaleStrain, 1000).
+expCost(exampleExpSpec,experiment, 1).
+expCost(exampleExpSpec,initEnv(Feature, Value), 0) :-
+   expSpec_initEnv(exampleExpSpec, Feature, ValueRange),
+   acceptable_value(ValueRange, Value). 
+   % let's assume that all value ranges are finite due to 
+   % (possibly fine) discretization.
+expCost(exampleExpSpec,incEnv(addComp(Compound,Amount), 0.5).
+\end{verbatim}
+
+and we need a loss function to compare two experiment outpouts (a predicted and actual one).
+
+\subsection{Experimental observation database}
+
+Initial experimental conditions is a data structure specifying the initial values of all variables declared in the experiment initialisation space, which is a part of the experiment specification space described above.
+
+An experiment update strategy is a data structure specifying as a function of time the changes to the environment performed during the experiment.  This data structure should contain updates in the space of experiment updates, which is a part of the experiment space described above.
+
+An experiment input is a tuple $expInput(ExpInit,ExpInc)$
+where $ExpInit$ is an initial experimental condition
+and $ExpInc$ is an experiment environment update strategy.
+
+An experiment output is an assignment of values to all measurements declared in the experiment output space, which is a part of the experiment specification space described above.
+
+Once experiments are performed, a database can be constructed consisting of
+pairs $(ExpInput,ExpOutput)$.
+
+\subsection{Model probability distribution spaces}
+\label{sec:modProbDist}
+Given a declaration of a model space $\modelspace$ as described above, one can also define a probability space $\probmodelspace$ over $\modelspace$.
+Even though inference algorithms can use internally any apropriate
+probability distributions, one can restrict priors over model space
+to independent priors on all the parameters, e.g. a prior could be specified as
+
+\begin{verbatim}
+model_prior(exampleModelPrior, geneRegulateEdge(G1,G2), [0.1:0,0.9:1]) :- 
+   zimmerman(edge(G1,G2)).
+model_prior(exampleModelPrior, geneRegulateEdge(G1,G2), [0.95:0,0.05:1]) :- 
+   not(zimmerman(edge(G1,G2))).
+model_prior(exampleModelPrior, geneTempRegulate(G1), [0.05:-1,0.05:-0.5,0.8:0,0.05:0.5,0.05:1]).
+\end{verbatim}
+
+A disadvantage of this strategy is that it may insufficiently take into account
+\begin{itemize}
+\item the prior that simpler models are more likely.
+\item local patterns of which one could estimate the frequence by pattern mining (e.g. cyclicly directed triangles are unlikely).
+\end{itemize}
+
+\section{Adalab system components}
+
+\subsection{Simulator}
+The simulator takes as input:
+\begin{enumerate}
+\item a model space declaration
+\item a compatible experiment space declaration
+\item experiment initial conditions (consistent with the environment initialization space and strain space defined)
+\item experiment environment updates (consistent with the environment increment space defined).
+\end{enumerate}
+
+and returns a set of values with the structure defined by the experiment output space declaration.
+
+
+An additional argument can be provided to the simulator, specifying uncertainty on the model (see e.g. Section \ref{sec:modProbDist}).  In that case, the simulator will simulate several times, sampling from the model probability distribution.  
+
+
+\subsection{Model parameter estimation}
+
+A model parameter estimation algorithm is an algorithm taking as input
+\begin{enumerate}
+\item a declaration of a model space $\modelspace$.
+\item a declaration of a compatible experiment space $\expspace$
+\item a model space prior $P_{prior}$
+\item a database of experimental observations $D$.
+\end{enumerate}
+
+and outputs a set of model parameters which best explains the observations under the model space prior, e.g.
+$\hbox{argmax}_{m\in\modelspace} P_{prior}(m)P(D|m)$
+
+Many different strategies are plausible, a naive one would just perform a hill climbing (in continuous or discrete space).
+
+
+
+\subsection{Experiment selection}
+
+An experiment selection algorithm takes as input
+
+
+A model parameter estimation algorithm is an algorithm taking as input
+\begin{enumerate}
+\item a declaration of a model space $\modelspace$.
+\item a declaration of a compatible experiment space $\expspace$
+\item a model space prior $P_{prior}$
+\item a database of earlier experimental observations $D$.
+\item an experiment cost function definition
+\item a loss function
+\end{enumerate}
+
+and outputs a list of experiments which will be most informative / cost-efficient.
+
+One (common) strategy could be to sample from the experiment space, and select the experiment which is most cost-effective and most different from earlier selected experiments.
+
+Ways to determine the informativeness of experiments could include e.g.:
+\begin{itemize}
+\item the variation of experiment results around the selected experiment (e.G. by simulating the experiment with a bit of noise on the model).
+\item an experiment between two experiments with different outcomes.
+\end{itemize}
+
+
+\end{document}
