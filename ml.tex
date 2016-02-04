@@ -1,5 +1,9 @@
 
 \documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{algpseudocode}
+\usepackage{amssymb}
 
 \begin{document}
 
@@ -206,7 +210,54 @@ Ways to determine the informativeness of experiments could include e.g.:
 \begin{itemize}
 \item the variation of experiment results around the selected experiment (e.G. by simulating the experiment with a bit of noise on the model).
 \item an experiment between two experiments with different outcomes.
+\item Expected model change \cite{cai2013maximizing}, i.e. choose the experiment for which the model (parameters) will change the most
+\item Using a set of different models (e.g. obtained via a parameter estimation algorithm with a stochastic element), select the most uncertain (classification) or with highest variance (regression) experiment, cfr. QBC
 \end{itemize}
+Enforcing diverse experiments has been done in the past \cite{xu2007incorporating} by adding a diversity term to the ``general'' informativeness measure. Examples here could be using a distance metric such as cosine similarity, euclidian distance, ...
+ 
+To estimate usefulness of an experiment, one needs an efficient way to 
+move through the experimental space. As the experimental space is huge, an exhaustive search of experiments will not be feasible. A first approach (equivalent to pool-based sampling) could be:
 
+\setlength{\textfloatsep}{10pt}% Remove \textfloatsep
 
+\begin{algorithmic}
+\Function{experiment\_sampling}{$\expspace$, batchSize, $D$, sampleSize}
+\Require Experimental space $\expspace$, batchSize, database with previous experiments $D$, sampleSize
+\State batch $\leftarrow \emptyset$
+\State experimentSamples $\leftarrow$ sampleExperiments($\expspace$, $D$, sampleSize)
+   \While{$|$batch$| < $ batchSize }
+   \For{ experimentSample $\in$ experimentSamples }
+     \State double Informativeness $\leftarrow$ determineInformativeness(experimentSample, $\expspace$, $D$, batch)
+   \EndFor
+   \State batch $\leftarrow$ batch $\cup$ \{experiment with highest informativeness\}
+   \State experimentSamples $\leftarrow$ experimentSamples $\setminus$ \{experiment with highest informativeness\}
+   \EndWhile \\
+   \Return batch
+\EndFunction
+\end{algorithmic}
+
+Alternatively, we can also create an experiment de novo by using existing optimization techniques. Let $\phi$ denote some informativeness function, $\mathbf{x}$ the experimental factors, with $N$ the amount of experimental factors 
+and let $c_{i,min}$ and $c_{i,max}$ denote respectively the lower and upper bound for experimental factor $i$, we can define the optimization problem as follows:
+\begin{equation}\label{eq:opt_data_select}
+ \begin{aligned}
+  & max_{\mathbf{x}} & & \phi(\mathbf{x}) \\
+  & \text{s.t.} & & \forall i \in N: c_{i,min} \leq x_i \leq c_{i,max} \\
+ \end{aligned}
+\end{equation}
+Additional constraints can be added depending on existing knowledge of the experimental space.
+Depending on the mathematical properties of $\phi$, we can then employ different appropriate optimization techniques.
+In pseudocode:
+\begin{algorithmic}
+  \Function{optimal\_selection}{$\expspace$, batchSize, $D$}
+  \Require Experimental space $\expspace$, batchSize, database with previous experiments $D$
+  \State  batch $\leftarrow \emptyset$ 
+  \While{ $|$batch$| < $ batchSize }
+  \State newExperiment $\leftarrow$ optimalExperiment($\expspace$ | batch, $D$ )\Comment{cfr. equation \ref{eq:opt_data_select} }
+  \State batch $\leftarrow$ batch $\cup$ \{newExperiment\}
+  \EndWhile \\
+  \Return batch
+  \EndFunction
+\end{algorithmic}
+\bibliographystyle{plain}
+\bibliography{mlrefs}
 \end{document}
