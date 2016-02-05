@@ -18,7 +18,7 @@
 
 \section{Model and experiment space declarations}
 
-Declarations should be constructed for the \textit{model space} and \textit{experiment space}.  These specifications may be refined during the project, it is essential to have a repository which always has the most recent specifications suppoirted by all modules (and possibly experimental versions not yet supported by all modules).
+Declarations should be constructed for the \textit{model space} and \textit{experiment space}.  These specifications may be refined during the project, it is essential to have a repository which always has the most recent specifications supported by all modules (and possibly experimental versions not yet supported by all modules).
 
 This document will represent specifications in logic (prolog facts),
 there are some specific formalisms around, e.g., for gene regulatory networks,
@@ -28,7 +28,7 @@ Nevertheless, during implementation more suitable representations could be devel
 
 \subsection{Experiment space}
 
-An environemt state is a data structure representing the state of the environment at a certain time point.  This includes amongst others the concentration of compounds (sugar, alcohol, ...) and temperature (see technical documents).  
+An environment state is a data structure representing the state of the environment at a certain time point.  This includes amongst others the concentration of compounds (sugar, alcohol, ...) and temperature (see technical documents).  
 
 The specification of an experiment is a tuple $expSpec(InitEnv,IncEnv,Strain,Output)$ where
 \begin{enumerate}
@@ -101,7 +101,7 @@ We will denote model spaces with $\modelspace$.
 
 \subsection{Cost and objective functions}
 
-We laos have declarations of the cost of experiments, e.g.,
+We will have declarations of the cost of experiments, e.g.,
 
 \begin{verbatim}
 expCost(exampleExpSpec,newknockoutStrain, 100).
@@ -115,7 +115,20 @@ expCost(exampleExpSpec,initEnv(Feature, Value), 0) :-
 expCost(exampleExpSpec,incEnv(addComp(Compound,Amount), 0.5).
 \end{verbatim}
 
-and we need a loss function to compare two experiment outpouts (a predicted and actual one).
+and we need a loss function to compare two experiment outputs (a predicted and actual one).
+The loss function can use for instance extracted parameters related to diauxic shift from both curves such as: 
+\begin{itemize}
+ \item Lag time: time it takes for a sign of growth in the curve
+ \item Linear slope of the exponential phase
+ \item Linear slope of the post-diauxic phase
+ \item Exponential phase duration
+ \item Post-diauxic phase duration
+ \item Diauxic shift duration
+ \item Diauxic shift (binary value)
+\end{itemize}
+
+Alternatively the loss function could also be calculated directly using time series of growth curves by using for instance 
+dynamic time warping techniques. The loss function can also include a regularization term e.g. to favour simpler models.
 
 \subsection{Experimental observation database}
 
@@ -150,7 +163,7 @@ model_prior(exampleModelPrior, geneTempRegulate(G1), [0.05:-1,0.05:-0.5,0.8:0,0.
 A disadvantage of this strategy is that it may insufficiently take into account
 \begin{itemize}
 \item the prior that simpler models are more likely.
-\item local patterns of which one could estimate the frequence by pattern mining (e.g. cyclicly directed triangles are unlikely).
+\item local patterns of which one could estimate the frequency by pattern mining (e.g. cyclicly directed triangles are unlikely).
 \end{itemize}
 
 \section{Adalab system components}
@@ -245,7 +258,7 @@ and let $c_{i,min}$ and $c_{i,max}$ denote respectively the lower and upper boun
  \end{aligned}
 \end{equation}
 Additional constraints can be added depending on existing knowledge of the experimental space.
-Depending on the mathematical properties of $\phi$, we can then employ different appropriate optimization techniques.
+Depending on the mathematical properties of $\phi$, we can then employ different appropriate optimization techniques (constrained nonlinear optimization).
 In pseudocode:
 \begin{algorithmic}
   \Function{optimal\_selection}{$\expspace$, batchSize, $D$}
