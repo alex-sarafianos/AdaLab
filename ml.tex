@@ -98,6 +98,45 @@ exampleModelGene(gene4).
 \end{verbatim}
 
 We will denote model spaces with $\modelspace$.
+For the latest version of the continuous simulator influence is modelled as a linear combination of a gene's regulators by means of the following equation:
+\begin{equation}
+ g_i(t+1) = \sum_{j : g_j \in Pa(g_i) \cup \{g_i\} } w_{ij}g_j(t) + \beta_{i}
+ \label{eq:cont_sim}
+\end{equation}
+where $g_k$ are genes, $t$ is time, $Pa(\dot)$ indicates the parents of a gene, $w_{ij}$ are weights and $\beta_i$ is an intercept. 
+Given this equation, we can define a matrix of parameters related to the adjacency matrix of the underlying network:
+\begin{equation}
+\mathbf{W} = \begin{bmatrix} 
+w_{1,1} &\cdots & w_{1,n}\\
+\vdots & \ddots & \vdots \\
+w_{n,1} & \cdots & w_{n,n} 
+      \end{bmatrix}
+\end{equation}
+
+
+and
+
+\begin{equation}
+ \mathbf{\beta} = \begin{bmatrix}
+      \beta_1 \\
+      \vdots \\
+      \beta_n 
+     \end{bmatrix}
+\end{equation}
+
+With $w_{i,j}$ is non-zero if there is a directed edge from node $i$ to $j$ and the value being the influence that node $i$ has on $j$ and $\beta_i$ is a constant term indicating the behaviour on the level of a node $i$ 
+when there is no interaction (i.e. the incoming nodes have level 0) cfr. equation \ref{eq:cont_sim}. Which gives us the following set of parameters:
+\begin{equation}
+ \mathbf{\theta} = \begin{bmatrix}
+                     w_{1,1} \\
+                     \vdots \\
+                     w_{n,n} \\
+                     \beta_1 \\
+                     \vdots \\
+                     \beta_n
+                    \end{bmatrix}
+% 
+\end{equation}
 
 \subsection{Cost and objective functions}
 
@@ -181,7 +220,8 @@ and returns a set of values with the structure defined by the experiment output 
 
 
 An additional argument can be provided to the simulator, specifying uncertainty on the model (see e.g. Section \ref{sec:modProbDist}).  In that case, the simulator will simulate several times, sampling from the model probability distribution.  
-
+This could for instance include probabilities of certain edges or (continuous) probability density functions of parameters of the model. Alternatively some inherent noise to the gene regulation can be modelled by adding some noise (according to a prespecified
+noise function) to the levels of gene expression(continuous) or by adding a probability of flipping a bit in the boolean case. The latter is currently already implemented in the simulator.
 
 \subsection{Model parameter estimation}
 
