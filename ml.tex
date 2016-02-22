@@ -138,6 +138,179 @@ when there is no interaction (i.e. the incoming nodes have level 0) cfr. equatio
 % 
 \end{equation}
 
+\subsubsection{Including both dependencies and functions parameters}
+The above example only defines network structure parameters, describing the force of dependencies between genes. However, this assumes that the expression level function of a gene given its parents (regulators, temperature, metabolites, ...) is not part of the model parameters. We propose here a more general adaptation of previous example for less restricted expression functions of genes given their parents:
+
+\begin{verbatim}
+modelSpec(exampleModelSpec).
+modelSpec_strain(exampleModelSpec, exampleStrainSpec). 
+modelSpec_parameter(exampleModelSpec, geneRegulateEdge(G1,G2), bool) :-
+   exampleModelGene(G1), exampleModelGene(G2).
+modelSpec_parameter(exampleModelSpec, geneTempRegulate(G1), bool) :-
+   % for genes influenced by the temperature:
+   % strength of regulation is the (temperature minus 20Celsius)
+   % times the value of this parameter.
+   exampleModelGene(G1).
+modelSpec_parameter(exampleModelSpec, geneExpressionFunction(G1), Function) :-
+   %Function is of the form functionName(Gene, ParentsList, GeneExpressionLevel) 
+   %where the parents are the nodes affecting its expression level
+   %   (transcription factors, temperature, ...)
+   exampleModelGene(G1), functor(Function, _, 3).
+%An example of function in an additive context could be:
+functionExample(Gene, [R1,R2,R3], Level) :- expressionLevels([R1,R2,R3], [E1,E2,E3]), 
+   Level is -0.6 * E1 + 0.5 * E2 + 1 * E3.
+exampleModelGene(gene1).
+exampleModelGene(gene2).
+exampleModelGene(gene3).
+exampleModelGene(gene4).
+\end{verbatim}
+
+Note that here, a Function is an arity 3 predicate which is specific to a gene (with full instanciations of all parameters). The Function space here is not constrained in order to match many machine learning strategies. However, we could refine the constraints on the Function parameter for a given strategy by allowing its name to be in some subset of possible functors. For example, we could only allow Function values being composition of $noisy_or$ and $noisy_and$ predicates.
+
+\subsubsection{Dynamic Model through K slices of time}
+
+The model under study is dynamic, allowing to predict the evolution of the biological system for different time periods. An obvious restriction in the model is that a time step state does no depend on the future steps. However, dependencies should not necessarily assume that t step depends on t-1 step only (2 slices of time model). It may indeed rely on more previous steps, but also allow for intra-time step dependencies (describing observed correlations which could allow to guide the structure learning process). Thus, defining dependencies between the different concepts of the model should include time steps values to make explicit the actual dependency which is occuring. An example of such addition would be:
+
+\begin{verbatim}
+modelSpec(exampleModelSpec).
+modelSpec_strain(exampleModelSpec, exampleStrainSpec). 
+%TimeOffset = i means we have a dependency from t minus i value of G1 to t value of G2.
+%TimeOffset = 0 describes an intra-time step correlation
+modelSpec_parameter(exampleModelSpec, geneRegulateEdge(G1,TimeOffset,G2), bool) :-
+   exampleModelGene(G1), exampleModelGene(G2), member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneTempRegulate(G1,TimeOffset), bool) :-
+   exampleModelGene(G1), member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneExpressionFunction(G1), Function) :-
+   %Function is of the form functionName(Gene, ParentsList, GeneExpressionLevel) 
+   %where the parents are (Regulator, TimeOffset) pairs
+   exampleModelGene(G1), functor(Function, _, 3).
+%An example of function in an additive and dynamic context could be:
+%Remember that each Ri is indeed a (TF, TimeOffset) pair!
+functionExample(Gene, [R1,R2,R3], Level) :- expressionLevels([R1,R2,R3], [E1,E2,E3]), 
+   Level is -0.6 * E1 + 0.5 * E2 + 1 * E3.
+exampleModelGene(gene1).
+exampleModelGene(gene2).
+exampleModelGene(gene3).
+exampleModelGene(gene4).
+\end{verbatim}
+
+\subsubsection{Working with uncertainty}
+
+There are several reasons why we should consider uncertainty in our biological model. Some main causes include: 1) the lack of knowledge (we can observe not deterministic dependencies between genes because we miss some co-regulators for example, but our partial knowledge already allows for better prediction than not considering it, so we should keep it); 2) the noise in observations (we have different behaviour for apparent same experimental conditions which can in fact be different for some feature not described in the dataset); 3) the system uncertainty itself (even if some coumpounds of a chemical reaction are present, molecules may not collide and provoke the reaction, or not enough for a regulation to occur); 4) the system state uncertainty (we do not know some of the gene states and thus we have to marginalize over their values to compute our beliefs on other genes states). 
+
+Due to these sources of uncertainty, the model should be able to work not only with gene expression functions but also distributions. A simple example of updated program in this context could be:
+\begin{verbatim}
+modelSpec_parameter(exampleModelSpec, geneDistribution(G1), Distrib) :-
+   %Distribution is of the form 
+   %   distribName(Gene, ParentsList, GeneExpressionLevels, Probas) 
+   %where the parents are (Regulator, TimeOffset) pairs
+   exampleModelGene(G1), functor(Function, _, 4).
+%An example of function in an additive and dynamic context could be:
+%Remember that each Ri is indeed a (TF, TimeOffset) pair!
+%For readability, we consider more discretized gene states
+functionExample(Gene, [R1,R2,R3], Levels, Probas) :- 
+   expressionLevels([R1,R2,R3], [-1,-1,0]), Levels = [-1,0,1], 
+                                            Probas = [0.7,0.2,0.1].
+functionExample(Gene, [R1,R2,R3], Levels, Probas) :- 
+   expressionLevels([R1,R2,R3], [-1,-1,1]), Levels = [-1,0,1], 
+                                            Probas = [0.5,0.3,0.2].
+%[... and so on for other values of [R1,R2,R3]...]
+\end{verbatim}
+
+Note that such distributions are not necessarily conditional probability table requiring one probability value (parameter) per gene x parent configuration. They can also be other usual distributions requiring less parameters.
+
+\subsubsection{Domain theory embedding}
+
+The model space shoud be able to include domain theory. In the following, we give several examples of such knowledge.
+
+\paragraph{Transcription Factors and Target Genes}
+
+Not all genes are able to regulate siblings. Assigning to each gene in the model its type (a.k.a. its biological function) could be useful to limit the number of parameters to learn or structures to browse. An update to previous definition in this direction could be:
+
+\begin{verbatim}
+modelSpec_parameter(exampleModelSpec, geneRegulateEdge(G1,TimeOffset,G2), bool) :-
+   exampleTranscriptionFactor(G1), exampleModelGene(G2), 
+   member(TimeOffset, allowedTimeRange).
+exampleTranscriptionFactor(G1) :- exampleModelGene(G1).
+exampleTranscriptionFactor(gene1).
+exampleTranscriptionFactor(gene3).
+exampleModelGene(gene2).
+exampleModelGene(gene4).
+\end{verbatim}
+
+\paragraph{Activators and inhibitors aggregation}
+
+As stated in the above examples, regulation between genes can be either an activation or an inhibition. However, the individual expression of each regulator is not necessarily what matters the most in the end when trying to simulate the target gene's expression level. Indeed, some aggregation of activators and inhibitors could be more adequate information to infer the gene's expression level. Thus, including the activator and inhibitor roles for regulation dependencies could allow to define aggregation-oriented regulation rules, e.g.:
+
+\begin{verbatim} 
+%We must also add a constraint stating that a TF 
+%cannot both activate and inhibit a same gene.
+modelSpec_parameter(exampleModelSpec, geneActivateEdge(G1,TimeOffset,G2), bool) :-
+   exampleTranscriptionFactor(G1), exampleModelGene(G2),
+   member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneInhibitEdge(G1,TimeOffset,G2), bool) :-
+   exampleTranscriptionFactor(G1), exampleModelGene(G2),
+   member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneTempRegulate(G1,TimeOffset), bool) :-
+   exampleModelGene(G1), member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneExpressionFunction(G1), Function) :- 
+   exampleModelGene(G1), functor(Function, _, 3).
+%An example of function with the activation and inhibition roles could be:
+functionExample2(Gene, Parents, Level) :- activators(Gene, Parents, Activators),
+   inhibitors(Gene, Parents, Inhibitors), expressionLevels(Activators, LEA), 
+   expressionLevels(Inhibitors, LEI), mean(LEA, MEA), mean(LEI, MEI),
+   Level is 0.6 * (MEA - 2 * MEI).
+exampleTranscriptionFactor(G1) :- exampleModelGene(G1).
+exampleTranscriptionFactor(gene1).
+exampleTranscriptionFactor(gene2).
+exampleTranscriptionFactor(gene3).
+exampleModelGene(gene4).
+\end{verbatim}
+
+\paragraph{Co-regulations}
+
+In addition to activators and inhibitors being potentially more important as an aggregation than as separate contributors to a target expression level, co-regulation of several genes seem to be an important knowledge to take into consideration beyond pairwise regulations. Thus, the model should be able to include lists of co-regulators which could be jointly added as parent of target genes in order to avoid missing them when subsets of these co-regulators would not be detected as regulators at all by some machine learning heuristics (e.g. by the use of iterative forward feature selection mechanisms). An extension to the previously defined PROLOG program could be the following:
+
+\begin{verbatim} 
+%We must also add a constraint stating that a TF 
+%cannot both activate and inhibit a same gene.
+modelSpec_parameter(exampleModelSpec, activateEdge(P,TimeOffset,G), bool) :-
+   exampleTranscriptionFactor(P), exampleModelGene(G), 
+   member(TimeOffset, allowedTimeRange) ;
+   exampleCoRegulator(P), exampleModelGene(G),
+   member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, inhibitEdge(P,TimeOffset,G), bool) :-
+   exampleTranscriptionFactor(P), exampleModelGene(G),
+   member(TimeOffset, allowedTimeRange) ;
+   exampleCoRegulator(P), exampleModelGene(G),
+   member(TimeOffset, allowedTimeRange).
+modelSpec_parameter(exampleModelSpec, geneTempRegulate(G1,TimeOffset), bool) :-
+   exampleModelGene(G1),member(TimeOffset,allowedTimeRange).
+%We have to assign expressionLevels to
+%co-regulators the same way as for genes, using functions
+%We thus generalize the previous geneExpressionFunction parameter to nodeFunction
+modelSpec_parameter(exampleModelSpec, nodeFunction(N), Function) :- 
+   exampleModelGene(N), functor(Function, _, 3) ;
+   exampleCoRegulator(N), functor(Function, _, 3).
+%The example function does not change since functions are also defined for
+%co-regulators and thus allow to compute their expresion levels
+functionExample2(Gene, Parents, Level) :- activators(Gene, Parents, Activators),
+   inhibitors(Gene, Parents, Inhibitors), expressionLevels(Activators, LEA), 
+   expressionLevels(Inhibitors, LEI), mean(LEA, MEA), mean(LEI, MEI),
+   Level is 0.6 * (MEA - 2 * MEI).
+exampleTranscriptionFactor(G1) :- exampleModelGene(G1).
+exampleTranscriptionFactor(gene1).
+exampleTranscriptionFactor(gene2).
+exampleTranscriptionFactor(gene3).
+exampleModelGene(gene4).
+%CoRegulator definition composed of [gene1, gene3]
+exampleCoRegulator(cr1).
+exampleCoRegulatorGene(cr1, gene1).
+exampleCoRegulatorGene(cr1, gene3).
+\end{verbatim}
+
+We will denote model spaces with $\modelspace$.
+
 \subsection{Cost and objective functions}
 
 We will have declarations of the cost of experiments, e.g.,
@@ -168,6 +341,10 @@ The loss function can use for instance extracted parameters related to diauxic s
 
 Alternatively the loss function could also be calculated directly using time series of growth curves by using for instance 
 dynamic time warping techniques. The loss function can also include a regularization term e.g. to favour simpler models.
+
+About global loss function, in order to evaluate an overall performance of our model, if we assume that we have a few points per time series and that the time alignment between predicted and real curves is good (if not perfect), maybe we could consider the Euclidean distance in the curves space. If the number of points is huge ($>n$ for a $n$ to determine ...), we could maybe try to simplify the curve before computing the distance (Fourier transform?). In a probability framework setting, we could also define a model which would allow to compute some conditional (log) likelihood of the form $(log) P(curve_{t1}, ..., curve_{tend}|Model)$.
+
+It could also be important to create more local scores for the different parts of the growth curve, in order to guide the refinement process. Indeed, if the typical yeast growth curve during diauxic shift contains 5 time periods with typical behaviour, and if the error of some prediction is local to some specific period, then maybe we could restrict the set of genes to update.
 
 \subsection{Experimental observation database}
 
