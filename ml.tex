@@ -98,45 +98,6 @@ exampleModelGene(gene4).
 \end{verbatim}
 
 We will denote model spaces with $\modelspace$.
-For the latest version of the continuous simulator influence is modelled as a linear combination of a gene's regulators by means of the following equation:
-\begin{equation}
- g_i(t+1) = \sum_{j : g_j \in Pa(g_i) \cup \{g_i\} } w_{ij}g_j(t) + \beta_{i}
- \label{eq:cont_sim}
-\end{equation}
-where $g_k$ are genes, $t$ is time, $Pa(\dot)$ indicates the parents of a gene, $w_{ij}$ are weights and $\beta_i$ is an intercept. 
-Given this equation, we can define a matrix of parameters related to the adjacency matrix of the underlying network:
-\begin{equation}
-\mathbf{W} = \begin{bmatrix} 
-w_{1,1} &\cdots & w_{1,n}\\
-\vdots & \ddots & \vdots \\
-w_{n,1} & \cdots & w_{n,n} 
-      \end{bmatrix}
-\end{equation}
-
-
-and
-
-\begin{equation}
- \mathbf{\beta} = \begin{bmatrix}
-      \beta_1 \\
-      \vdots \\
-      \beta_n 
-     \end{bmatrix}
-\end{equation}
-
-With $w_{i,j}$ is non-zero if there is a directed edge from node $i$ to $j$ and the value being the influence that node $i$ has on $j$ and $\beta_i$ is a constant term indicating the behaviour on the level of a node $i$ 
-when there is no interaction (i.e. the incoming nodes have level 0) cfr. equation \ref{eq:cont_sim}. Which gives us the following set of parameters:
-\begin{equation}
- \mathbf{\theta} = \begin{bmatrix}
-                     w_{1,1} \\
-                     \vdots \\
-                     w_{n,n} \\
-                     \beta_1 \\
-                     \vdots \\
-                     \beta_n
-                    \end{bmatrix}
-% 
-\end{equation}
 
 \subsubsection{Including both dependencies and functions parameters}
 The above example only defines network structure parameters, describing the force of dependencies between genes. However, this assumes that the expression level function of a gene given its parents (regulators, temperature, metabolites, ...) is not part of the model parameters. We propose here a more general adaptation of previous example for less restricted expression functions of genes given their parents:
@@ -170,7 +131,7 @@ Note that here, a Function is an arity 3 predicate which is specific to a gene (
 \subsubsection{Dynamic Model through K slices of time}
 
 The model under study is dynamic, allowing to predict the evolution of the biological system for different time periods. An obvious restriction in the model is that a time step state does no depend on the future steps. However, dependencies should not necessarily assume that t step depends on t-1 step only (2 slices of time model). It may indeed rely on more previous steps, but also allow for intra-time step dependencies (describing observed correlations which could allow to guide the structure learning process). Thus, defining dependencies between the different concepts of the model should include time steps values to make explicit the actual dependency which is occuring. An example of such addition would be:
-
+  
 \begin{verbatim}
 modelSpec(exampleModelSpec).
 modelSpec_strain(exampleModelSpec, exampleStrainSpec). 
@@ -221,7 +182,7 @@ Note that such distributions are not necessarily conditional probability table r
 
 \subsubsection{Domain theory embedding}
 
-The model space shoud be able to include domain theory. In the following, we give several examples of such knowledge.
+The model space should be able to include domain theory. In the following, we give several examples of such knowledge.
 
 \paragraph{Transcription Factors and Target Genes}
 
@@ -240,7 +201,8 @@ exampleModelGene(gene4).
 
 \paragraph{Activators and inhibitors aggregation}
 
-As stated in the above examples, regulation between genes can be either an activation or an inhibition. However, the individual expression of each regulator is not necessarily what matters the most in the end when trying to simulate the target gene's expression level. Indeed, some aggregation of activators and inhibitors could be more adequate information to infer the gene's expression level. Thus, including the activator and inhibitor roles for regulation dependencies could allow to define aggregation-oriented regulation rules, e.g.:
+As stated in the above examples, regulation between genes can be either an activation or an inhibition. However, the individual expression of each regulator is not necessarily what matters the most in the end when trying to simulate the target gene's expression level.
+Indeed, some aggregation of activators and inhibitors could be more adequate information to infer the gene's expression level. Thus, including the activator and inhibitor roles for regulation dependencies could allow to define aggregation-oriented regulation rules, e.g.:
 
 \begin{verbatim} 
 %We must also add a constraint stating that a TF 
@@ -414,8 +376,46 @@ and outputs a set of model parameters which best explains the observations under
 $\hbox{argmax}_{m\in\modelspace} P_{prior}(m)P(D|m)$
 
 Many different strategies are plausible, a naive one would just perform a hill climbing (in continuous or discrete space).
+The latest version of the continuous simulator influence is modelled as a linear combination of a gene's regulators by means of the following equation:
+\begin{equation}
+ g_i(t+1) = \sum_{j : g_j \in Pa(g_i) \cup \{g_i\} } w_{ij}g_j(t) + \beta_{i}
+ \label{eq:cont_sim}
+\end{equation}
+where $g_k$ are genes, $t$ is time, $Pa(\dot)$ indicates the parents of a gene, $w_{ij}$ are weights and $\beta_i$ is an intercept. 
+Given this equation, we can define a matrix of parameters related to the adjacency matrix of the underlying network:
+\begin{equation}
+\mathbf{W} = \begin{bmatrix} 
+w_{1,1} &\cdots & w_{1,n}\\
+\vdots & \ddots & \vdots \\
+w_{n,1} & \cdots & w_{n,n} 
+      \end{bmatrix}
+\end{equation}
 
 
+and
+
+\begin{equation}
+ \mathbf{\beta} = \begin{bmatrix}
+      \beta_1 \\
+      \vdots \\
+      \beta_n 
+     \end{bmatrix}
+\end{equation}
+
+With $w_{i,j}$ is non-zero if there is a directed edge from node $i$ to $j$ and the value being the influence that node $i$ has on $j$ and $\beta_i$ is a constant term indicating the behaviour on the level of a node $i$ 
+when there is no interaction (i.e. the incoming nodes have level 0) cfr. equation \ref{eq:cont_sim}. Which gives us the following set of parameters:
+\begin{equation}
+ \mathbf{\theta} = \begin{bmatrix}
+                     w_{1,1} \\
+                     \vdots \\
+                     w_{n,n} \\
+                     \beta_1 \\
+                     \vdots \\
+                     \beta_n
+                    \end{bmatrix}
+% 
+\end{equation}
+The parameters of this model have been estimated with time series datasets of gene expression data. This (simplified) model could already be used in a first phase, before going to more elaborate models.
 
 \subsection{Experiment selection}
 
