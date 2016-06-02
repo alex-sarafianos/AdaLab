@@ -158,7 +158,7 @@ exampleModelGene(gene4).
 \end{verbatim}
 
 Mind that currently we have no (biological) evidence that this is necessary or would improve prediction and that this would increase the amount of parameters that need to be estimated.
-\subsubsection{Working with uncertainty}
+\subsubsection{Working with uncertainty}\label{sec:uncertainty}
 
 There are several reasons why we should consider uncertainty in our biological model. Some main causes include: 1) the lack of knowledge (we can observe not deterministic dependencies between genes because we miss some co-regulators for example, but our partial knowledge already allows for better prediction than not considering it, so we should keep it); 2) the noise in observations (we have different behaviour for apparent same experimental conditions which can in fact be different for some feature not described in the dataset); 3) the system uncertainty itself (even if some coumpounds of a chemical reaction are present, molecules may not collide and provoke the reaction, or not enough for a regulation to occur); 4) the system state uncertainty (we do not know some of the gene states and thus we have to marginalize over their values to compute our beliefs on other genes states). 
 
@@ -374,9 +374,29 @@ and \url{AdaLab/Data/models/reportjan2016final.pdf}} or on bitbucket\footnote{Fi
 An additional argument can be provided to the simulator, specifying uncertainty on the model (see e.g. Section \ref{sec:modProbDist}).  In that case, the simulator will simulate several times, sampling from the model probability distribution.  
 This could for instance include probabilities of certain edges or (continuous) probability density functions of parameters of the model. Alternatively some inherent noise to the gene regulation can be modelled by adding some noise (according to a prespecified
 noise function) to the levels of gene expression(continuous) or by adding a probability of flipping a bit in the boolean case. The latter is currently already implemented in the simulator.
+\subsection{Simulator uncertainty}
+As specified in section \ref{sec:uncertainty}, there are different sources contributing to uncertainty. The simulator allows to express different aspects of this uncertainty: initial levels of vertices, model parameters, experimental values.
+Currently we only allow specification by means of a continuous uniform, Gaussian or Beta distribution, however we can easily extend this to other, both continuous as discrete, distributions\footnote{Have a look at \url{http://www.boost.org/doc/libs/1_60_0/libs/math/doc/html/math_toolkit/dist_ref/dists.html}
+for a list of other distributions}.	
+Additionally, a combination of deterministic and probabilistic information is still possible: for instance if we are certain that knocking out a gene completely disables the corresponding vertex, the vertex can be completely cut out. However if there will be
+a small non-zero value associated with that vertex, it might be more suitable to model it by means of a probability density function. A general outline of the algorithm is found in \ref{alg:prob_sim}.
+\begin{algorithmic}\label{alg:prob_sim}
+  \Function{probabilistic\_simulation}{sampleSize, $\probmodelspace$, experiment } 
+  \Require sampleSize, $\probmodelspace$, experiment
+  \For{ sample = 0 to sampleSize}
+  \State sampledNetwork $\leftarrow$ sample\_network($\probmodelspace$)
+  \State outputCurve $\leftarrow$  simulate(sampledNetwork, experiment) \Comment Related to \label{sec:param_sim}
+  \EndFor \\
+  \Return all output curves 
+  
+  \EndFunction 
+\end{algorithmic} 
+For this sampling procedure we make the following assumptions: the pdfs for the weights of the network are marginal distributions and are independent, for the initial gene levels we either assume we have a 
+marginal probability distribution given ( as we need the actual network to estimate conditional probability distributions, which is what we are trying to learn ) or that we have some deterministic real values available for instance from other 
+datasets such as \cite{brauer2008coordination}. 
 
 \subsection{Model parameter estimation}
-
+\subsubsection{General}
 A model parameter estimation algorithm is an algorithm taking as input
 \begin{enumerate}
 \item a declaration of a model space $\modelspace$.
@@ -390,6 +410,7 @@ $\hbox{argmax}_{m\in\modelspace} P_{prior}(m)P(D|m)$
 
 Many different strategies are plausible, a naive one would just perform a hill climbing (in continuous or discrete space). More concrete, we could use a gradient-based optimization method and (if possible)
 obtain an exact expression for the gradient or by using a numerical approximation of the gradient.
+\subsubsection{Parametrization simulator}\label{sec:param_sim}
 The latest version of the continuous simulator influence is modelled as a linear combination of a gene's regulators by means of the following equation:
 \begin{equation}
  g_i(t+1) = \sum_{j : g_j \in Pa(g_i) \cup \{g_i\} } w_{ij}g_j(t) + \beta_{i}
@@ -477,7 +498,7 @@ move through the experimental space. As the experimental space is huge, an exhau
    \State experimentSamples $\leftarrow$ experimentSamples $\setminus { \argmax_{\mathbf{x}} \phi(\mathbf{x} } $
    \EndWhile \\
    \Return batch
-\EndFunction
+\EndFunction	
 \end{algorithmic}
 
 Alternatively, we can also create an experiment de novo by using existing optimization techniques. Let $\phi$ denote some informativeness function, $\mathbf{x}$ the experimental factors, with $N$ the amount of experimental factors 
@@ -487,7 +508,7 @@ and let $c_{i,min}$ and $c_{i,max}$ denote respectively the lower and upper boun
   & max_{\mathbf{x}} & & \phi(\mathbf{x}) \\
   & \text{s.t.} & & \forall i \in N: c_{i,min} \leq x_i \leq c_{i,max} \\
  \end{aligned}
-\end{equation}
+\end{equation}	
 Additional constraints can be added depending on existing knowledge of the experimental space.
 Depending on the mathematical properties of $\phi$, we can then employ different appropriate optimization techniques (constrained nonlinear optimization).
 Mind that this technique would infer the local optimal experiment instead of a series of optimal experiments, the series of (suboptimal) experiments is generated by iteratively calling the algorithm.
