@@ -20,13 +20,21 @@
 \usepackage{longtable}
 \usepackage{fixltx2e}
 \usepackage{pdflscape}
+\usepackage{perpage}
+
+% Use “\cite{NEEDED}” to get Wikipedia-style “citation needed” in document
+\usepackage{ifthen}
+\let\oldcite=\cite
+\renewcommand\cite[1]{\ifthenelse{\equal{#1}{NEEDED}}{\ensuremath{^\texttt{[citation~needed]}}}{\oldcite{#1}}}
+\newcommand{\naturalspace}{\mathbb{N}}
 
 \title{ AdaLab: Technical document on simulator optimization }
 \author{Alexandros Sarafianos, Jan Ramon}
 
 \begin{document}
 \maketitle
-
+\input{simulator_optimization_sections/simulation.tex}
+\input{simulator_optimization_sections/optimization.tex}
 \bibliographystyle{plain}
 \bibliography{simulator_optimization}
 
