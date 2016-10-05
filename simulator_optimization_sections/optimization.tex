@@ -24,10 +24,6 @@ Instead of the values of the vertices being available at every time step, the va
 By doing so, the simulator creates a single time series instead of one per vertex in the network. The simulator is the transformed into: $sim_{3}: \mathbf{exp} \to \mathbb{R}^{T}$. 
 These functions, that operate as proxies for the FBA, were chosen from typical benchmark problems in optimization theory. In the following descriptions of the different functions, we will denote the output as
 $out[t]$, similar to before, $g_i$ denotes the value of the $i$-th vertex and $N$ the amount of vertices in the graph.
-% \begin{itemize}
-%  \item 
-% \end{itemize}
-% \subsection{Functions} \label{subsec:funcs}
 \subsubsection{Summation}
 \begin{equation}
  y[t] = \sum_{i=1}^N g_i[t]
@@ -65,7 +61,6 @@ Given equation \ref{eq:gene_update}, we can define a matrix of parameters relate
 \theta_{e(N,1} & \cdots & \theta_{e,(N,N)} 
       \end{bmatrix}
 \end{equation}
-% \boldsymbol{\theta_e}, \boldsymbol{\theta_v}
 and
 
 \begin{equation}
@@ -175,17 +170,13 @@ avoids choosing and having to manually tune a learning rate altogether and good 
 \end{figure}
 
 \subsection{Stopping mechanism}
-To avoid overfitting an early stopping mechanism is applied on a whithheld validation set. If the performance does not improve for 50 iterations, the algorithm is terminated and returns the best parameter vector before those 50 iterations.
-There is also a maximum on the amount of iterations: if this maximum is reached, the algorithm also stops even though the optimization process might still be improving the parameter vector.
-% 
-% \subsection{Model Space}
-% % http://onlinelibrary.wiley.com/doi/10.1111/j.2041-210X.2012.00236.x/full :
-% % Simulations or observations of flow dynamics occurring on networks with fixed topology can be described using time-ordered networks (Table 1, F4, C2). For a network with fixed topology whose edges represent potential interactions that depend on the details of the system, the occurrence and ordering of actual interactions can be completely described by a time-ordered network. The approaches described in previous sections can then be used to make time-dependent descriptions and inferences about the system. This approach may also be valuable for individual-based or cellular automata models (Wolfram 2002) where network topology is fixed – for example, in a cellular automata model of pollen flow between multiple patches with unchanging connectivity, one could simulate the activity of different pollen carriers and test the hypothesis that plants with more conspecific neighbours had higher rates of resource flow. An area of active application is in social learning, where network-based diffusion analysis (Franz & Nunn 2009; Hoppitt, Boogert & Laland 2010) is used to assess how the social structure of a group predicts the rate of acquisition of a new behaviour in group members. This general approach of fitting multiple competing models of flow on a fixed network to observed patterns of flow would likely be applicable in other areas.
-% Different application: graph is a structure of roads, output is amount of kms of traffic jam, try to find influence of particular crossroads wrt the traffic jam.
-%  Influence propagation in social network with output being popularity of product over time? cfr product life cycle curve.
-%  \subsection{Related work}
-%  \cite{costa2014rbfopt} black box optimization with gaussian processes, \cite{amaran2014simulation} simulator optimization (no focus on optimizing parametried graphical structure of simulator from proxy)
-%  \cite{raza2014recurrent}.
+To avoid overfitting an early stopping mechanism is applied on a whithheld validation set\footnote{Training set, validation set and test set are divided 
+in respectively 60\%-20\%-60\%.}. If the performance does not improve for a preset amount of iterations, the algorithm is terminated and returns the best parameter vector before those 50 iterations.
+Apart from that strategy, some other methods were also implemented in order to save on computation time:
+\begin{enumerate}
+ \item The maximum amount of epochs is parametrized. When the optimizer reaches this amount, it stops and returns the currently optimal value.
+ \item We also calculate the errors between epochs. When the average absolute error is lower than a preset\footnote{0.00001} tolerance level in the last preset amount of iterations, the optimizer terminates as well and returns the last optimal value.
+\end{enumerate}
  \section{Experiments}
  \section{Introduction}
  This section will cover some aspects about the experiments that we perform with the optimization algorithm such as
@@ -204,21 +195,6 @@ calculated the outputs with this network and the simulator, adding different lev
 To evaluate the output of the parameter estimation algorithm we calculate the mean squared error on a separate testset (see Section \ref{section:obj}) and the Euclidian distance of the optimal
 parameter vector to the real parameter vector (see Section \ref{sec:eval}). When using the output of the optimization algorithm as samples we use the kolmogorov-smirnov statistic rather than
 the Euclidian distance.
-
-% \subsection{Parameters}
-% Parameters either deterministic or probabilistic, 
-% using an ensemble of learners to estimate probabilistic parameters \cite{carney1999confidence}.
-% \subsection{Experiments}
-% 
-% Parameters of vertices (cfr. infra \ref{sec:params}) are sampled from the normal distribution $\mathcal{N}(0,1)$
-%    
-% We tested the following scenario's:
-% \begin{itemize}
-%  \item Every value of every vertex is available for every time step
-%  \item Every value of a subset of vertices is available for every time step
-%  \item At every timestep the values of the vertices at that timestep is used to calculate one single value for that timestep. These
-%  functions are explained in \ref{subsec:func}.
-% \end{itemize}
 Every set of algorithmic parameters is repeated 10 times with different randomized networks. The length of the time series is kept at 10.
 
 
@@ -231,12 +207,3 @@ Every set of algorithmic parameters is repeated 10 times with different randomiz
 % % pinac 27: test_functions_3.sh and test_functions_3_adadelta.sh
 % %  
 % \end{verbatim}
-    
-%%Dynamic neural networks feed back output and use it as (part of) the input typically 
-%%Dynamic neural networks not only deal with nonlinear multivariate behaviour, but also include (learning of) time-dependent behaviour such as various transient phenomena 
-%%and delay effects. Techniques to estimate a system process from observed data fall under the general category of system identification.
-%%Recurrent neural networks: Contrary to feedforward networks, recurrent neural networks (RNNs) are models with bi-directional data flow. 
-%%While a feedforward network propagates data linearly from input to output, RNNs also propagate data from later processing stages to earlier stages. RNNs can be used as general sequence processors.
-%Stochastic approximation http://castlelab.princeton.edu/ORF569papers/Powell%20ADP%20Chapter%206.pdf 
-%Stochastic optimization http://www.stat.columbia.edu/~liam/teaching/compstat-spr15/lauren-notes.pdf
-%Use NetGenerator V2.0?	
