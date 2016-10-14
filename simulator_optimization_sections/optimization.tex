@@ -93,8 +93,8 @@ In the equation of the logistic curve
 \begin{equation}
  f(x) = \frac{L}{1+e^{-k(x-x0)}}
 \end{equation}
-there are different parameters that need to be set: $L$, $k$ and $x0$, so for every gene that influences the metabolic
-network there are 3 additional parameters. The metabolic network contains a total of 904 genes\footnote{In the metabolic model iMM904}, whereas the gene regulatory
+To allow for the correct range, we keep $L$ fixed to 1. This however leaves other parameters that need to be set: $k$ and $x0$, so for every gene that influences the metabolic
+network there are 2 additional parameters. The metabolic network contains a total of 904 genes\footnote{In the metabolic model iMM904}, whereas the gene regulatory
 network for diauxic shift contains 333 genes. Taking the intersection of those two sets yields a total of 146 genes
 % \footnote{These are: YBL015W, YLR304C, YJL200C, YAL054C, YLR153C, YOL086C, YMR303C, YMR083W, YBR145W, YCR010C, YCL025C, YBR132C, YMR169C, YOR374W, YER073W, YPL061W, YPR128C, YBR149W, YOR377W, YDR384C, YPL111W, YLR438W, YML042W, YOR125C, YAL038W, YNR001C, YCR005C, YPR001W, YHR051W, YOR100C, YDR256C, YGR088W, YML054C, YJR048W, YJL005W, YOR065W, YML070W, YIR029W, YIR032C, YIR028W, YJR152W, YIR031C, YOR180C, YDL174C, YEL071W, YBR208C, YHL016C, YLR284C, YGR254W, YHR174W, YOR317W, YER015W, YMR246W, YKL060C, YLR377C, YOR388C, YKR009C, YLL043W, YPL262W, YAL062W, YCL040W, YDL022W, YKL152C, YDL021W, YDR098C, YHL032C, YIL155C, YER062C, YFR053C, YGL253W, YHR094C, YMR011W, YDR345C, YHR092C, YHR096C, YDR343C, YDR342C, YER065C, YPR006C, YNL037C, YOR136W, YDL066W, YLR174W, YNL009W, YKL217W, YIL125W, YDR148C, YFL018C, YOR142W, YGR244C, YKL029C, YKL085W, YOL126C, YDL078C, YNL117W, YML120C, YKR097W, YLR044C, YLR134W, YGR087C, YGL248W, YOR360C, YGR240C, YMR205C, YIL107C, YOL136C, YBR196C, YCR012W, YKL127W, YMR105C, YMR006C, YIL160C, YGL205W, YPL147W, YKL188C, YGL062W, YBR218C, YOR347C, YJL166W, YKL148C, YLL041C, YKL141W, YDR178W, YOR184W, YJR095W, YNL202W, YDR536W, YPL057C, YJL052W, YJR009C, YGR192C, YJR019C, YBR117C, YJR066W, YKL203C, YDR050C, YBR126C, YDR074W, YGR019W, YBR006W, YDL210W, YEL021W, YAR035W, YER024W, YJL045W, YNL241C}
 The metabolism of yeast is well understood, at least better than the gene regulatory network\cite{NEEDED}. For this reason we primarily parametrize the gene regulatory network and how it interacts with the metabolic network
@@ -168,7 +168,8 @@ avoids choosing and having to manually tune a learning rate altogether and good 
     \caption{ An overview of the AdaDelta algorithm. }
     \label{fig:adadelta}
 \end{figure}
-
+\subsection{Enforcing sparsity of parameter vector}
+\url{https://lingpipe.files.wordpress.com/2008/04/lazysgdregression.pdf}
 \subsection{Stopping mechanism}
 To avoid overfitting an early stopping mechanism is applied on a whithheld validation set\footnote{Training set, validation set and test set are divided 
 in respectively 60\%-20\%-60\%.}. If the performance does not improve for a preset amount of iterations, the algorithm is terminated and returns the best parameter vector before those 50 iterations.
@@ -196,7 +197,6 @@ To evaluate the output of the parameter estimation algorithm we calculate the me
 parameter vector to the real parameter vector (see Section \ref{sec:eval}). When using the output of the optimization algorithm as samples we use the kolmogorov-smirnov statistic rather than
 the Euclidian distance.
 Every set of algorithmic parameters is repeated 10 times with different randomized networks. The length of the time series is kept at 10.
-
 
 \subsection{Results}
 % output from script in validation\_scripts,  test\_functions, test\_functions2 and test\_functions3

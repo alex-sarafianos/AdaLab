@@ -22,8 +22,8 @@ discrete timepoints for which the values have to be estimated and $\mathbf{exp}$
 estimates the value of the next time step given the values of the current time.
 From previous studies\cite{geistlinger2013comprehensive} there is already information available about the structural aspects of the GRN for the diauxic shift. 
 Based on this we defined the regression task as following: 
-\begin{equation}
- g_v[t+1] = f_{update\_gene}(Pa(g_v[t]) \cup g_v[t])
+\begin{equation}\label{eq:update}
+ g_v[t+1] = f_{update\_gene}(Pa(g_v[t]) \cup g_v[t]) 
 \end{equation}
 where $g_v$ are genes, $t$ is time, $Pa(\cdot)$ indicates the parents of a gene.
 We assume that the level of a gene at a certain time is dependent on the the influential genes from \cite{geistlinger2013comprehensive} and itself at the previous time. We also discretize time for this purpose and assume
@@ -75,7 +75,7 @@ can be fed to the GRN. Additionally, the metabolic network contains information 
 chemical reactions. Dependent on the value of those genes, the optimization problem can be redefined by adapting the 
 relevant maximal fluxes. 
 To map the values of the network from the ranges $[-1,1]$ to $[0,1]$, we feed the gene values to a parametrized logistic function.
-% Figure \ref{fig:simulator} shows at a high level how the simulator is composed and what the inputs
+Figure \ref{fig:simulator} shows at a high level how the simulator is composed and what the inputs
 and outputs of the systems are. Additionally, pseudocode of the simulator is available at \ref{alg:combi_simulator}.
 \begin{figure}	
     \centering
@@ -102,7 +102,56 @@ and outputs of the systems are. Additionally, pseudocode of the simulator is ava
 As typically, there are different sources contributing to uncertainty. The simulator was extended to allow to express different aspects of this uncertainty: initial levels of vertices, model parameters, experimental values.
 Currently we only allow specification by means of a (continuous) uniform, Gaussian or Beta distribution, however we can easily extend this to other, both continuous as discrete, distributions.	
 Additionally, a combination of deterministic and probabilistic information is still possible: for instance if we are certain that knocking out a gene completely disables the corresponding vertex, the vertex can be completely cut out. However if
-there could be a small non-zero value associated with that vertex, it might be more suitable to model it by means of a probability density function. The 
+there could be a small non-zero value associated with that vertex, it might be more suitable to model it by means of a probability density function. 
+\section{Learners}
+A predictor for equation \ref{eq:update} was obtained by training support vector regressor models with different kernels. 	
+ 
+ $N$ is the amount of training data $x_k \in \mathbb{R}^m$ and output values $y_k \in \mathbb{R}$.
+ $\epsilon$ is a hyperparameter related to the required accuracy and $\xi_k$ and $\xi_k^*}$ are additional slack variables
+ for the unfeasible case.
+ $C$ is a regularization paremeter controlling the trade-off between achieving a low error on the training data and minimizing
+ the norm of the weights. 
+ \begin{equation*}
+\begin{aligned}
+& \underset{x}{\text{minimize}}
+& & \frac{1}{2}||w||^2 + C\sum_{k=1}^N (\xi_k + \xi_k^*)\\
+& \text{subject to}
+& & y_k - w^T\phi(x_k) - b \leq \epsilon +\xi_k \\
+& & & w^T\phi(x_k) + b - y_k \leq \epsilon + \xi_k^* \\
+& & & \xi_k, \xi_k^* \geq 0
+\end{aligned}
+\end{equation*}
+\url{http://scikit-learn.org/stable/auto_examples/svm/plot_rbf_parameters.html}
+$\gamma$ is a free hyperparameter related to how far the influence of a single training example reaches. 
+\begin{equation*}
+ K_{RBF}(x,x') = exp( -\gamma|| x - x' ||^2 )
+\end{equation*}
+
+
+\cite{Smola2004}
+\begin{verbatim}
+To learn the function described by equation \ref{eq:update}, we used support vector regressors with different kernels. 
+C : float, optional (default=1.0)
+    Penalty parameter C of the error term. The penalty is a squared l2 penalty. The bigger this parameter, the less regularization is used.
+epsilon : float, optional (default=0.1)
+
+    Epsilon parameter in the epsilon-insensitive loss function. Note that the value of this parameter depends on the scale of the target variable y. If unsure, set epsilon=0.
+The free parameters in the model are C and epsilon.
+
+The implementation is based on libsvm.
+    \cite{scikit-learn}
+kernel : string, optional (default=’rbf’)
+
+    Specifies the kernel type to be used in the algorithm. It must be one of ‘linear’, ‘poly’, ‘rbf’, ‘sigmoid’, ‘precomputed’ or a callable. If none is given, ‘rbf’ will be used. If a callable is given it is used to precompute the kernel matrix.
+gamma : float, optional (default=’auto’)
+
+    Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’. If gamma is ‘auto’ then 1/n_features will be used instead.
+"gamma" : [ 2**k for k in range(-10, 15) ]l\footnote{with hyperparameter values $C \in \{ 2^k \forall k \in [-10,15[ : k \in \naturalspace \}$ and 
+$\epsilon = \{0,0.01,0.05,0.1,0.15,0.2\}$ and L1 loss function}
+ hyperparameters were determined by 10-fold crossvalidation
+ \end{verbatim}
+
+
 \section{Results}
 \subsection{Results of estimates for gene regulatory network}
 \subsubsection{Data}
@@ -111,8 +160,11 @@ regard to the gene regulatory network lies on the temporal behaviour of gene reg
 limit ourselves to datasets solely concerning diauxic shift as we assume that the genetic influences can be averaged over the different conditions. 
 This resulted in the following subset: \cite{brauer2005homeostatic,spellman1998comprehensive,cho1998genome,derisi1997exploring,lee2000arrest,carmel2001role}.
 Prior to regression tasks, the datasets were normalized (independently from eachother) such that all expression values are contained in the interval $[-1,1]$.%http://libsleipnir.bitbucket.org/Normalizer.html
-We obtain appropriate datasets by choosing a $t_{defined}$ and only selecting those datapoints for which we have data of $\Delta t = t_{defined}$. As the datasets are very diverse in their timescales, this results less available data per reaction. These time 
-difference are expected to have a significant effect on the output. This resulted in datasets for which the summary can be found in table \ref{tab:summary_time_datasets}.
+We obtain appropriate datasets by choosing a $t_{defined}$ and only selecting those datapoints for which we have data of $\Delta t = t_{defined}$.
+Datasets with a narrower time discretization are also used for the rougher discretizations, for instance when a dataset contains gene values every 30 minutes, we also subsample from this dataset to acquire values that are 60 minutes apart.
+The reverse however was not done: datasets with for instance a discretization of 60 minutes are not interpolated to acquire discretizations of 20 minutes.
+As the datasets are very diverse in their timescales, this results less available data per reaction. These time 
+differences are expected to have a significant effect on the output. This resulted in datasets for which the summary can be found in table \ref{tab:summary_time_datasets}.
 \begin{table}[htb]
 	\centering
    % \resizebox{0.3\textwidth}{!}
@@ -135,15 +187,31 @@ $\Delta t$(min)&Min&Max&Mean\\
 	\label{tab:summary_time_datasets}
 
 \end{table}
-\subsection{Results of estimates for gene regulatory network}
-We trained both a linear support vector regressor and one with an RBF kernel\footnote{with hyperparameter values $C \in \{ 2^k \forall k \in [-10,15[ : k \in \naturalspace \}$ and 
-$\epsilon = \{0,0.01,0.05,0.1,0.15,0.2\}$ and L1 loss function} as specified in section \ref{sec:update}.
+
+\section{Evaluation measures}
+To estimate the performance of our model we calculated different measures. We will now briefly discuss these.
+In the following equations, $y$ denotes the true target output, $\hat{y}$ the output estimated by the model, $n_{samples}$
+the amount of examples in the test set and $Var(\cdot)$ the variance.
+\begin{itemize}
+ \item Explained variance score(Expl. var.): 
+ $$explained\_variance(y,\hat{y}) = 1 - \frac{Var\{y - \hat{y}\}}{Var\{y\}}$$
+ \item Mean Absolute Error(MAE): 
+ $$MAE(y,\hat{y}) = \frac{1}{n_{samples}} \sum_{i=0}^{n_{samples-1}} |y_i - \hat{y}_i|$$
+\item Mean Squared Error(MSE):
+ $$MSE(y,\hat{y}) = \frac{1}{n_{samples}} \sum_{i=0}^{n_{samples-1}} (y_i - \hat{y}_i)^2$$
+ \item Median Absolute Error(MedAE):
+ $$MedAE(y,\hat{y}) = median( |y1-\hat{y1}|, ..., |y_n - \hat{y}_n|) $$
+ \item $R^2$ score, the coefficient of determination:
+ $$R^2(y,\hat{y}) = 1 - \frac{\sum_{i=0}^{n_{samples} - 1 } (y_i - \hat{y}_i)^2}{\sum_{i=0}^{n_{samples}-1}(y_i - \hat{y}_i)^2}$$
+\end{itemize}
+In our case $y$ corresponds to a gene level at a specific time point and 
+\subsection{Results of estimates for gene regulatory network and discussion}
+We trained both a linear support vector regressor and one with an RBF kernel as specified in section \ref{sec:update}.
 The results are summarized in table \ref{tab:summary_v_1}, which shows different qualitative measures for the different regressors and for the different time discretizations, but for more clarity only the best time discretizations are shown.
 After the hyperparameters were determined by 10-fold crossvalidation, the regressor was retrained with the whole training set. Reported results are on a separate testset, divided in two 80\%-20\% disjoint sets (respectively training and test set).
 The linear version is better than the RBF SVR, suggesting that a linear approximation is not necessarily a bad approximation. As a starting network for further optimization, we will therefore use the parameters obtained from the linear support vector
-regressor with the discretization of 30 minutes.
+regressor with the discretization of 30 minutes. 
 Subsequent gene levels are calculated by the following formula:
-
 \begin{equation}\label{eq:gene_update}
  g_v[t+1] = \sum_{j : g_j \in Pa(g_v) \cup \{g_i\} } \theta_{e,(i,j)}g_j[t] + \theta_{v,i}
 \end{equation}
