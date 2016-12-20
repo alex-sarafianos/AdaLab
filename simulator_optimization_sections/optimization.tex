@@ -1,4 +1,4 @@
-\chapter{Simulation-based optimization}
+\chapter{Simulation-based optimization using gradient methods}
 \section{Introduction}
 In chapter \ref{chap:sim}, we discussed what the simulator is composed of and how it predicts growth curves for gene knockout experiments. This chapter will handle how
 the simulator is used to improve the growth curve predictions of the initial model. In order to test the optimization algorithm, we identified different scenarios which we will 
@@ -114,8 +114,6 @@ certain learning rate $\gamma$  the new point $\mathbf{b}$ is calculated as foll
  \subsection{Stochastic Gradient Descent} 
  Stochastic Gradient Descent(SGD) is a simplification of the Gradient Descent(GD) algorithm. Whereas GD updates the parameter vector by calculating the gradient for all training examples, SGD estimates
  the gradient based on a single randomly picked example, resulting in a noisier approximation of the gradient.
-%   <POPULARITY>
-  
  \subsection{Objective Function}\label{section:obj}
  Recall that equation \ref{eq:gd} requires us to specify some function $F(\mathbf{x})$ whose value will be minimized. For this work, we employed the Mean Squared Error. As the outputs for the different scenerios
  are not the same, there are some differences in the equations which we will quickly discuss.
@@ -168,8 +166,6 @@ avoids choosing and having to manually tune a learning rate altogether and good 
     \caption{ An overview of the AdaDelta algorithm. }
     \label{fig:adadelta}
 \end{figure}
-\subsection{Enforcing sparsity of parameter vector}
-\url{https://lingpipe.files.wordpress.com/2008/04/lazysgdregression.pdf}
 \subsection{Stopping mechanism}
 To avoid overfitting an early stopping mechanism is applied on a whithheld validation set\footnote{Training set, validation set and test set are divided 
 in respectively 60\%-20\%-60\%.}. If the performance does not improve for a preset amount of iterations, the algorithm is terminated and returns the best parameter vector before those 50 iterations.
@@ -185,11 +181,12 @@ Apart from that strategy, some other methods were also implemented in order to s
  \subsection{Datasets}
  \subsubsection{Toy datasets}
  We considered two types of networks, complete digraphs\footnote{``A complete digraph is a directed graph in which every pair of distinct vertices is connected by a pair of unique edges (one in each direction).''} and scalefree networks
-\footnote{``A scale-free network is a network whose degree distribution follows a power law, at least asymptotically.That is, the fraction P(k) of nodes in the network having k connections to other nodes goes for large values of k as 
+\footnote{``A network whose degree distribution follows a power law, at least asymptotically. That is, the fraction P(k) of nodes in the network having k connections to other nodes goes for large values of k as 
 $ P(k) \sim k^{-\gamma} $ where $\gamma$ is a parameter whose value is typically in the range $2 < \gamma < 3$ \cite{barabasi2004network}, although occasionally it may lie outside these bounds''}. We have opted for this
 kind of networks as a lot of real-life networks can be characterized as being scalefree. Examples of such graphs include biological networks such as gene regulatory networks and protein interaction networks, social networks and more \cite{barabasi2009scale}
 The parameters related to the vertices and edges are randomly sampled from the normal distribution with mean $0$ and standard deviation $1$. Given this network we then generated a list of all possible knockout experiments(input to the system), and
 calculated the outputs with this network and the simulator, adding different levels of noise. These toy datasets were then used for scenarios 1, 2 and 3.
+Remark: There has been some discussion about the usage of scalefree networks \cite{LimaMendez09} for biological networks.
  \subsubsection{Eve Growth curves}
  Currently not available.. Needed for scenario 4.
  \subsection{Evaluation}\label{sec:eval} 
@@ -198,12 +195,9 @@ parameter vector to the real parameter vector (see Section \ref{sec:eval}). When
 the Euclidian distance.
 Every set of algorithmic parameters is repeated 10 times with different randomized networks. The length of the time series is kept at 10.
 
-\subsection{Results}
-% output from script in validation\_scripts,  test\_functions, test\_functions2 and test\_functions3
-% 03 of august, new runs (\url{AdaLab/validation_script/to_run})
-% \begin{verbatim}
-% % pinac 25: test_functions.sh and test_functions_adadelta.sh
-% % pinac 26: test_functions_2.sh and test_functions_2_adadelta.sh
-% % pinac 27: test_functions_3.sh and test_functions_3_adadelta.sh
-% %  
-% \end{verbatim}
+\subsection{ Implementation }
+The implementation of the optimization algorithms can be found at \url{AdaLab/src/optimization} of the evaluation code in \url{adalab/src/executables}. Additionally, 
+some parts of the implementations are exposed to R. These exposed classes and methods are found in the file \url{AdaLab/src/R_interface_optimization.cpp}.
+\subsection{Discussion}
+The results showed non-sparse networks and thresholding the learned values did not show a correlation with the true edges. As this is highly unlikely, we changed the approach in order to learn more sparse structures and
+obtain a distribution over networks.
