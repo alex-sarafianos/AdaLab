@@ -2,7 +2,8 @@
 \section{Introduction}
 In order to obtain sparse network structures and a distribution over possible networks, we changed the approach to a sampling based optimization algorithm as this allows for straightforward specification of priors.
 \section{Algorithm}
-Implementation is located at \url{AdaLab/MetabolicModel/R/find_grn}. The algorithm is outlined at a high level
+\subsection{General Overview}
+The implementation is located at \url{AdaLab/MetabolicModel/R/find_grn.R}. The algorithm is outlined at a high level
 in Algorithm \ref{alg:find_grn}.
 \begin{algorithm}
 \label{alg:find_grn}
@@ -39,14 +40,27 @@ in Algorithm \ref{alg:find_grn}.
   \EndFunction
 \end{algorithmic}
 \end{algorithm}
-(1) in the algorithm is implemented as a random walk in the structure space and (2) as a random walk in parameter space.
-\section{Structure prior}
+\section{Different components of the algorithm}
+\subsection{Proposal distribution structure}
+Implemented as a random walk in the structure space. Two vertices of the network are chosen at random and if there is an edge present between them, it is removed otherwise an edge is added.
+\subsection{Proposal distribution parameter}
+When a new structure proposal is chosen, this determines the amount of parameters to be tuned. To generate a new proposal, the current parameters are adapted by adding a random number to every parameter. 
+This random number is sampled from a normal distribution with mean 0 and hence achieving a random walk in parameter space.
+\subsection{Structure prior}
+\subsubsection{Based on existing network}
 Currently a structure prior based on the Zimmer network is used. Edges that are present in Zimmer 
 are interpreted as being more likely to be present in the actual graph ($p = 0.9$), whereas edges
-not present in Zimmer are deemed unlikely to be present in the actual graph ($p = 0.9$)
-\section{Parameter priors}
+not present in Zimmer are deemed unlikely to be present in the actual graph ($p = 0.9$).
+
+\subsubsection{Possible extensions}
+Certain motifs are very unlikely or more likely to occur in gene regulatory networks. Including this kind
+of information as a prior, might improve the biological significance of the learned networks. A summary of these motifs 
+is currently not available and no related priors are therefore included in the learning algorithm.
+
+\subsection{Parameter prior}
 As not much is known about the values of the priors, we assume that they should be (relatively) small non-zero values 
-and hence we assign them a prior gaussian with mean 0 and standard deviation 1.
+and hence we assign them a prior gaussian with mean 0 and standard deviation 1. 
+
 \section{Implementation}
 The implementation of the algorithm can be found in \url{AdaLab/src/optimization/}, 
 \url{AdaLab/MetabolicModel/R/find_grn}, \url{AdaLab/MetabolicModel/R/optim.R} and in 
@@ -56,10 +70,10 @@ The implementation of the algorithm can be found in \url{AdaLab/src/optimization
 \subsubsection{Creating a random network structure}
 The random creation of a network structure is achieved by the function get\_random\_network 
 at \url{AdaLab/MetabolicModel/R/simulation.R}. It generates random scalefree networks\footnote{By default
-with $\gamma = 2.5$} that contain no parallel edges and self loops. 
+with $\gamma = 2.5$} that contain no parallel edges and self loops. This has been implemented using the library NetworkX\cite{hagberg-2008-exploring}.
 \subsubsection{Generating random parameters for the network structure}
 This is achieved by the function random\_parameters at \url{AdaLab/MetabolicModel/R/simulation.R}. 
 \subsubsection{Random inputs}
-Achieved by generate\_examples in \url{AdaLab/MetabolicModel/R/simulation.R}
+Achieved by generate\_examples in \url{AdaLab/MetabolicModel/R/simulation.R}. 
 \section{Results}
 Results are omitted as there is still a bug present in the metabolic part (need to update function calls with CoRegFlux).
