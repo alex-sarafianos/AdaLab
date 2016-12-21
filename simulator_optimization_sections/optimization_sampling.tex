@@ -10,35 +10,31 @@ in Algorithm \ref{alg:find_grn}.
 \begin{algorithmic}
   \Function{find\_grn}{maxStructIterations, maxParamIterations, exampleDatabase} 
   \Require A posterior distribution for the network $\pi_{network}$
-  \Require A posterior distribution for the parameters $\pi_{params}$
+  \Require A posterior distribution for the parameters $\pi_{param}$
   \Require A proposal distribution for the structure $q_{struct}$
-  \Require A proposal distribution for the parameters $q_{params}$
+  \Require A proposal distribution for the parameters $q_{param}$
   \State 1)Initialize network structure $\theta_{struct}^0$ and parameters $\theta_{param}^0$
-  \State 2)structIteration $\leftarrow$ 0
-  \State 3)Calculate the network posterior $\pi_{network}(\theta_{struct}^{[structIteration]}, \theta_{param}^{[structIteration]})$ 
-  \State 4)Generate a candidate for the structure (1)$\theta_{struct}^{*} \leftarrow q_{struct}(\theta_{struct}^{[structIteration]})$
-  \While structIteration $<$ maxStructIterations
-  \State 5)paramIteration $\leftarrow$ 0
-  \While paramIteration $<$ maxParamIterations
-  \State 6)Calculate the parameter posterior $\pi_{param}(\theta_{param}^{[paramIteration]}$ for $\theta_{struct}^{*}$
-  \State 7)Draw a candidate for the parameters 
+  \State 2)Calculate the network posterior $\pi_{network}(\theta_{struct}^{[structIteration]}, \theta_{param}^{[structIteration]})$ 
+  \State 3)Generate a candidate for the structure (1)$\theta_{struct}^{*} \leftarrow q_{struct}(\theta_{struct}^{[structIteration]})$
+   \For{ structIteration = 0; structIteration $<$ maxStructIterations; structIteration++}
+   \For{ paramIteration = 0; paramIteration $<$ maxParamIterations; paramIteration++}
+  \State 4)Calculate the parameter posterior $\pi_{param}(\theta_{param}^{[paramIteration]}$) for $\theta_{struct}^{*}$
+  \State 5)Draw a candidate for the parameters 
   \State (2)$\theta_{param}^{*} \leftarrow q_{param}(\theta_{param}^{[paramIteration]})$
-  \State 8)Calculate the posterior of the candidate $\pi_{param}^{*}$
-  \State 9)$\theta_{param}^{[paramIteration+1]} \leftarrow \theta_{param}^{*} $ 
-\State with probability $min({a(\theta_{param}^{*}, \theta_{param}^{[paramIteration]}), 1}$ 
+  \State 6)Calculate the posterior of the candidate $\pi_{param}^{*}$
+  \State 7)$\theta_{param}^{[paramIteration+1]} \leftarrow \theta_{param}^{*} $ 
+\State with probability $min({a(\theta_{param}^{*}, \theta_{param}^{[paramIteration]}), 1})$ 
 \State   $\theta_{param}^{[paramIteration+1]} \leftarrow \theta_{param}^{[paramIteration]} $ 
-\State  with probability $ 1 - min({a(\theta_{param}^{*}, \theta_{param}^{[paramIteration]}), 1}$ 
-  \State 10) paramIteration++
-  \EndWhile \\
+\State  with probability $ 1 - min({a(\theta_{param}^{*}, \theta_{param}^{[paramIteration]}), 1})$ 
+  \EndFor \\
   \State $\theta_{param}^{opt} \leftarrow \theta_{param}^{maxParamIterations}$
-  \State 11)Calculate the candidate network posterior 
+  \State 8)Calculate the candidate network posterior 
 \State $\pi_{network}(\theta_{struct}^{[structIteration]}, \theta_{param}^{opt})$ 
-  \State 12)$\theta_{struct}^{[structIteration+1]} \leftarrow \theta_{struct}^{*} $ 
-\State with probability $min({a(\theta_{param}struct^{*}, \theta_{struct}^{[structIteration]}), 1}$ 
+  \State 9)$\theta_{struct}^{[structIteration+1]} \leftarrow \theta_{struct}^{*} $ 
+\State with probability $min({a(\theta_{param}struct^{*}, \theta_{struct}^{[structIteration]}), 1})$ 
 \State  $\theta_{struct}^{[structIteration+1]} \leftarrow \theta_{struct}^{[structIteration]} $ 
-\State with probability $ 1 - min({a(\theta_{struct}^{*}, \theta_{struct}^{[structIteration]}), 1}$
-  \State 13)structIteration++
-  \EndWhile \\
+\State with probability $ 1 - min({a(\theta_{struct}^{*}, \theta_{struct}^{[structIteration]}), 1})$
+  \EndFor \\
   \Return $\theta_{struct}^{maxStructIterations}$ and $\theta_{param}^{opt}$
   \EndFunction
 \end{algorithmic}
